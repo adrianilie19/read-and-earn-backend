@@ -4,6 +4,37 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from Libros.models import Biblioteca
 from Libros.serializers import BibliotecaSerializer
+from Logros.models import Logro, LogroUsuario
+
+
+def comprobar_logros_biblioteca(usuario):
+    total_libros = Biblioteca.objects.filter(usuario=usuario).count()
+
+    criterios = {
+        1: 'Primer libro',
+        5: 'Lector habitual',
+        10: 'Coleccionista',
+    }
+
+    logros_desbloqueados = []
+
+    for num_libros, nombre_logro in criterios.items():
+        if total_libros >= num_libros:
+            try:
+                logro = Logro.objects.get(titulo=nombre_logro)
+                ya_tiene = LogroUsuario.objects.filter(usuario=usuario, logro=logro).exists()
+                if not ya_tiene:
+                    LogroUsuario.objects.create(usuario=usuario, logro=logro)
+                    usuario.exp += logro.exp
+                    logros_desbloqueados.append(nombre_logro)
+            except Logro.DoesNotExist:
+                pass
+
+    if logros_desbloqueados:
+        usuario.nivel = (usuario.exp // 100) + 1
+        usuario.save()
+
+    return logros_desbloqueados
 
 
 class BibliotecaView(APIView):
@@ -41,7 +72,15 @@ class BibliotecaView(APIView):
                 )
 
             serializer.save(usuario=request.user)
-            return Response({"success": True}, status=status.HTTP_201_CREATED)
+
+            logros_nuevos = comprobar_logros_biblioteca(request.user)
+
+            return Response({
+                "success": True,
+                "logros_desbloqueados": logros_nuevos,
+                "exp": request.user.exp,
+                "nivel": request.user.nivel,
+            }, status=status.HTTP_201_CREATED)
         else:
             errores = []
             for clave, error in serializer.errors.items():
