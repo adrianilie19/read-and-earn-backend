@@ -12,10 +12,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 if SECRET_KEY == "":
     raise KeyError("SECRET_KEY no puede estar vacía")
 
-if DEBUG:
-    ALLOWED_HOSTS = ['*']
-else:
-    ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="").split(',')
+ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'corsheaders',
