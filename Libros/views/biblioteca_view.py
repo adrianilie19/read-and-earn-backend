@@ -17,6 +17,7 @@ def comprobar_logros_biblioteca(usuario):
     }
 
     logros_desbloqueados = []
+    exp_ganada = 0
 
     for num_libros, nombre_logro in criterios.items():
         if total_libros >= num_libros:
@@ -26,6 +27,7 @@ def comprobar_logros_biblioteca(usuario):
                 if not ya_tiene:
                     LogroUsuario.objects.create(usuario=usuario, logro=logro)
                     usuario.exp += logro.exp
+                    exp_ganada += logro.exp
                     logros_desbloqueados.append(nombre_logro)
             except Logro.DoesNotExist:
                 pass
@@ -34,7 +36,7 @@ def comprobar_logros_biblioteca(usuario):
         usuario.nivel = (usuario.exp // 100) + 1
         usuario.save()
 
-    return logros_desbloqueados
+    return logros_desbloqueados, exp_ganada
 
 
 class BibliotecaView(APIView):
@@ -73,11 +75,12 @@ class BibliotecaView(APIView):
 
             serializer.save(usuario=request.user)
 
-            logros_nuevos = comprobar_logros_biblioteca(request.user)
+            logros_nuevos, exp_ganada = comprobar_logros_biblioteca(request.user)
 
             return Response({
                 "success": True,
                 "logros_desbloqueados": logros_nuevos,
+                "exp_ganada": exp_ganada,
                 "exp": request.user.exp,
                 "nivel": request.user.nivel,
             }, status=status.HTTP_201_CREATED)
